@@ -58,7 +58,7 @@ def GetInvalidMatches(goodMatches):
     X2 = 515
     Y2 = 324
     goodM = []
-    for m in goodMatch[:20]:
+    for m in goodMatch[:10]:
         pt_ = kp1[m.queryIdx].pt
         if (pt_[0] > X1 and pt_[0] < X2) and (pt_[1] > Y1 and pt_[1] < Y2):
             goodM.append(m)
@@ -66,36 +66,54 @@ def GetInvalidMatches(goodMatches):
     return goodM
 
 
-def TransformImg(src, kp1, kp2, match):
-    imgout=[]
+def TransformMat(kp1, kp2, match, flag):
+    H = []
     if len(match) > 3:
         ptsA = np.float32([kp1[m.queryIdx].pt for m in match]).reshape(
             -1, 1, 2)
         ptsB = np.float32([kp2[m.trainIdx].pt for m in match]).reshape(
             -1, 1, 2)
         ransacReprojThreshold = 4
-        H, status = cv2.findHomography(ptsA, ptsB, cv2.RANSAC,
-                                       ransacReprojThreshold)
-        imgout = cv2.warpPerspective(
-            src,
-            H, (src.shape[1], src.shape[0]),
-            flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP)
-    return imgout
+        if flag == 0:
+            H, status = cv2.findHomography(ptsA, ptsB, cv2.RANSAC,
+                                           ransacReprojThreshold)
+        else:
+            H, status = cv2.findHomography(ptsB, ptsA, cv2.RANSAC,
+                                           ransacReprojThreshold)
+    return H
 
 
-img1 = cv2.imread(r'base.bmp')
-img2 = cv2.imread(r'images/4.bmp')
+img1 = cv2.imread(r'base.bmp', 0)
+img2 = cv2.imread(r'images/24.bmp', 0)
+img2_ = np.zeros((980, 1312), dtype='uint8')
+img2_[245:735, 328:984] = img2
+img2 = img2_
+#cv2.imshow('img',img2)
+#cv2.waitKey(0)
 
 _, kp1, des1 = sift_kp(img1)
 _, kp2, des2 = sift_kp(img2)
 goodMatch = get_good_match(des1, des2)
 good = GetInvalidMatches(goodMatch)
 
-#img3 = cv2.drawMatches(img1, kp1, img2, kp2, good, None, flags=2)
-#cv2.imshow('img3', img3)
+img3 = cv2.drawMatches(img1, kp1, img2, kp2, good, None, flags=2)
+cv2.imshow('img3', img3)
 
-img4 = TransformImg(img2,kp1,kp2,good)
+M = TransformMat(kp1, kp2, good, 0)
+img4 = cv2.warpPerspective(
+    img2,
+    M, (img2.shape[1], img2.shape[0]),
+    flags=cv2.INTER_CUBIC + cv2.WARP_INVERSE_MAP)
 
-cv2.imshow('img4', img4)
+
+
+M_ = TransformMat(kp1, kp2, good, 1)
+img5 = cv2.warpPerspective(
+    img4,
+    M_, (img2.shape[1], img2.shape[0]),
+    flags=cv2.INTER_CUBIC + cv2.WARP_INVERSE_MAP)[245:735, 328:984]
+
+cv2.imshow('img4', img4[:489,:655])
+cv2.imshow('img5', img5)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
