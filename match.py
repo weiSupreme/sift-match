@@ -91,7 +91,43 @@ def TransformMat(kp1, kp2, match, flag):
     return H
 
 
-rect = [421, 286, 515, 323]
+def GetTransformedPoint(rect, M):
+    pts = np.float32([[rect[0], rect[1]], [rect[2], rect[3]]]).reshape(
+        -1, 1, 2)
+    ptsT = cv2.perspectiveTransform(pts, M)
+    
+    pyPts = [tuple(npt[0]) for npt in ptsT.astype(int).tolist()]
+    return pyPts
+
+
+def PaintImage(src, pt1, pt2):
+    x1, y1, x2, y2 = pt1[0], pt1[1], pt2[0], pt2[1]
+    if x1 > x2:
+        tmp = x2
+        x2 = x1
+        x1 = tmp
+    if y1 > y2:
+        tmp = y2
+        y2 = y1
+        y1 = tmp
+    img = src[y1:y2, x1:x2]
+    blur = cv2.blur(img, (17, 17))
+    element = cv2.getStructuringElement(cv2.MORPH_RECT, (21, 21))
+    dilated = cv2.dilate(blur, element)
+    src[y1:y2, x1:x2] = dilated
+    return cv2.blur(src, (3, 3))
+
+
+rects = [[248, 239, 278, 281], [277, 242, 303, 279], [306, 241, 329, 283],
+         [334, 244, 365, 283], [364, 242, 388, 282], [394, 243, 416, 285],
+         [423, 242, 450, 281], [455, 238, 483, 277], [246, 286, 270, 322],
+         [272, 285, 296, 325], [332, 288, 363, 324], [362, 287, 392, 325],
+         [421, 285, 453, 323], [451, 285, 477, 321], [480, 290, 512, 321],
+         [248, 239, 367, 285], [364, 237, 486, 283], [245, 285, 297, 324],
+         [330, 285, 392, 326], [419, 285, 512, 326], [246, 238, 328, 323],
+         [331, 242, 417, 326], [424, 238, 513, 324], [248, 237, 484, 281],
+         [244, 283, 511, 329], [247, 237, 513, 328]]
+
 img1 = cv2.imread(r'base.bmp', 0)
 imgdir = ('images/')
 imglist = os.listdir(imgdir)
@@ -103,7 +139,7 @@ for imgn in imglist:
     _, kp2, des2 = sift_kp(img2)
     goodMatch = get_good_match(des1, des2)
     good = GetInvalidMatches(goodMatch)
-    if len(good)<5:
+    if len(good) < 5:
         print(imgn, ' cant match')
         continue
 
@@ -112,19 +148,33 @@ for imgn in imglist:
     #cv2.waitKey(0)
 
     M = TransformMat(kp1, kp2, good, 0)
+    img4=cv2.warpPerspective(
+        img2,
+        M, (img2.shape[1], img2.shape[0]),
+        flags=cv2.INTER_CUBIC + cv2.WARP_INVERSE_MAP)
+    flag=0
+    while(1):
+        cv2.imshow('imgout',img4)
+        keyin=cv2.waitKey(50)
+        if keyin & 0xFF ==27:
+            flag=1
+            break
+        elif keyin & 0xFF ==9:
+            break
+    if flag:
+        continue
 
-    pts = np.float32([[rect[0], rect[1]], [rect[2], rect[3]]]).reshape(
-        -1, 1, 2)
-    ptsT = cv2.perspectiveTransform(pts, M)
-    pyPts = [tuple(npt[0]) for npt in ptsT.astype(int).tolist()]
-    pt1, pt2  = pyPts[0], pyPts[1]
-    img41 = img2[pt1[1]:pt2[1], pt1[0]:pt2[0]]
-    blur41 = cv2.blur(img41, (17, 17))
-    element = cv2.getStructuringElement(cv2.MORPH_RECT, (21, 21))
-    dilated41 = cv2.dilate(blur41, element)
-    img2[pt1[1]:pt2[1], pt1[0]:pt2[0]] = dilated41
-    blur5=cv2.blur(img2,(3,3))
+    cnt = 0
+    for rect in rects:
+        img2 = cv2.imread(imgdir + imgn, 0)
+        pts = GetTransformedPoint(rect, M)
+        pt1, pt2 = pts[0], pts[1]
+        imgout = PaintImage(img2, pt1, pt2)
 
-    cv2.imshow('img4', blur5)
-    cv2.waitKey(0)
+        imgnn = str(cnt) + '_' + imgn
+        #cv2.imwrite(imgnn,imgout)
+
+        cv2.imshow('imgout', imgout)
+        cv2.waitKey(0)
+        cnt = cnt + 1
 cv2.destroyAllWindows()
