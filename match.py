@@ -60,14 +60,14 @@ def GetInvalidMatches(goodMatches):
     X2 = 515
     Y2 = 324
     goodM = []
-    cnt=0
+    cnt = 0
     for m in goodMatch[:10]:
         pt_ = kp1[m.queryIdx].pt
         if (pt_[0] > X1 and pt_[0] < X2) and (pt_[1] > Y1 and pt_[1] < Y2):
             goodM.append(m)
-            cnt=cnt+1
+            cnt = cnt + 1
         #print(pt_)
-        if cnt==10:
+        if cnt == 10:
             break
     return goodM
 
@@ -91,59 +91,40 @@ def TransformMat(kp1, kp2, match, flag):
     return H
 
 
-def GetColor(src, rec):
-    pixel = 0
-    for i in range(0, 3):
-        x = random.choice(range(rec[0], rec[2]))
-        y = random.choice(range(rec[1], rec[3]))
-        pixel = int(src[y, x])
-    pixel = int(pixel / 3)
-    return pixel
-
-
 rect = [421, 286, 515, 323]
 img1 = cv2.imread(r'base.bmp', 0)
 imgdir = ('images/')
 imglist = os.listdir(imgdir)
 for imgn in imglist:
     print(imgn)
-    img2 = cv2.imread(imgdir+imgn, 0)
-    img2_ = np.zeros((980, 1312), dtype='uint8')
-    img2_[245:735, 328:984] = img2
-    img2 = img2_
-    #cv2.imshow('img',img2)
-    #cv2.waitKey(0)
+    img2 = cv2.imread(imgdir + imgn, 0)
 
     _, kp1, des1 = sift_kp(img1)
     _, kp2, des2 = sift_kp(img2)
     goodMatch = get_good_match(des1, des2)
     good = GetInvalidMatches(goodMatch)
+    if len(good)<5:
+        print(imgn, ' cant match')
+        continue
 
     img3 = cv2.drawMatches(img1, kp1, img2, kp2, good, None, flags=2)
     #cv2.imshow('img3', img3)
+    #cv2.waitKey(0)
 
     M = TransformMat(kp1, kp2, good, 0)
-    #img4 = cv2.warpAffine(img2,M,(img2.shape[1], img2.shape[0]))
-    img4=cv2.warpPerspective(
-        img2,
-        M, (img2.shape[1], img2.shape[0]),
-        flags=cv2.INTER_CUBIC + cv2.WARP_INVERSE_MAP)
-    #cv2.imwrite('1t.bmp',img4)
 
-    img41 = img4[rect[1]:rect[3], rect[0]:rect[2]]
+    pts = np.float32([[rect[0], rect[1]], [rect[2], rect[3]]]).reshape(
+        -1, 1, 2)
+    ptsT = cv2.perspectiveTransform(pts, M)
+    pyPts = [tuple(npt[0]) for npt in ptsT.astype(int).tolist()]
+    pt1, pt2  = pyPts[0], pyPts[1]
+    img41 = img2[pt1[1]:pt2[1], pt1[0]:pt2[0]]
     blur41 = cv2.blur(img41, (17, 17))
     element = cv2.getStructuringElement(cv2.MORPH_RECT, (21, 21))
     dilated41 = cv2.dilate(blur41, element)
-    img4[rect[1]:rect[3], rect[0]:rect[2]] = dilated41
+    img2[pt1[1]:pt2[1], pt1[0]:pt2[0]] = dilated41
+    blur5=cv2.blur(img2,(3,3))
 
-    M_ = TransformMat(kp1, kp2, good, 1)
-    #img5 = cv2.warpAffine(img4,M_,(img2.shape[1], img2.shape[0]))[245:735, 328:984]
-    img5 = cv2.warpPerspective(
-        img4,
-        M_, (img2.shape[1], img2.shape[0]),
-        flags=cv2.INTER_CUBIC + cv2.WARP_INVERSE_MAP)[245:735, 328:984]
-
-    cv2.imshow('img4', img4[:489, :655])
-    cv2.imshow('img5', img5)
+    cv2.imshow('img4', blur5)
     cv2.waitKey(0)
 cv2.destroyAllWindows()
