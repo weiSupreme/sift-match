@@ -57,17 +57,17 @@ def siftImageAlignment(img1, img2):
 def GetInvalidMatches(goodMatches):
     X1 = 246
     Y1 = 234
-    X2 = 515
-    Y2 = 324
+    X2 = 491
+    Y2 = 280
     goodM = []
     cnt = 0
-    for m in goodMatch[:10]:
+    for m in goodMatch:
         pt_ = kp1[m.queryIdx].pt
         if (pt_[0] > X1 and pt_[0] < X2) and (pt_[1] > Y1 and pt_[1] < Y2):
             goodM.append(m)
             cnt = cnt + 1
         #print(pt_)
-        if cnt == 10:
+        if cnt == 20:
             break
     return goodM
 
@@ -112,7 +112,7 @@ def PaintImage(src, pt1, pt2):
         y1 = tmp
     img = src[y1:y2, x1:x2]
     blur = cv2.blur(img, (17, 17))
-    element = cv2.getStructuringElement(cv2.MORPH_RECT, (21, 21))
+    element = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
     dilated = cv2.dilate(blur, element)
     src[y1:y2, x1:x2] = dilated
     return cv2.blur(src, (3, 3))
@@ -146,7 +146,7 @@ for imgn in imglist:
     img3 = cv2.drawMatches(img1, kp1, img2, kp2, good, None, flags=2)
     #cv2.imshow('img3', img3)
     #cv2.waitKey(0)
-
+    
     M = TransformMat(kp1, kp2, good, 0)
     img4=cv2.warpPerspective(
         img2,
@@ -163,7 +163,7 @@ for imgn in imglist:
             break
     if flag:
         continue
-
+    continue
     cnt = 0
     for rect in rects:
         img2 = cv2.imread(imgdir + imgn, 0)
