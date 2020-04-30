@@ -34,7 +34,7 @@ cv.namedWindow('draw', cv.WINDOW_NORMAL)
 cv.setMouseCallback('draw', Draw)
 txt=open('rect.txt','w')
 txt.write('[')
-img = cv.imread('base.bmp')
+img = cv.imread('template.bmp')
 img1 = img.copy()
 while (1):
     cv.imshow('draw', img)
